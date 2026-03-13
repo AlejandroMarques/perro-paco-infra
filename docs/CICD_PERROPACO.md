@@ -7,10 +7,10 @@
 
 ## Branch mapping
 
-| Branch   | Environment | Project       | Domains                          |
-|----------|-------------|---------------|----------------------------------|
-| `staging`| dev         | perropaco-dev | api.dev.perropaco.org, app.dev.perropaco.org |
-| `main`   | prod        | perropaco-prd | api.perropaco.org, app.perropaco.org       |
+| Branch    | Environment | Project       | Domains                                      |
+| --------- | ----------- | ------------- | -------------------------------------------- |
+| `staging` | dev         | perropaco-dev | api.dev.perropaco.org, app.dev.perropaco.org |
+| `main`    | prod        | perropaco-prd | api.perropaco.org, app.perropaco.org         |
 
 ## Image tagging
 
@@ -31,7 +31,7 @@ Create service tokens for `dev` and `prd` and store as `DOPPLER_TOKEN` in GitHub
 
 ## GitHub secrets (per app repo)
 
-- `INFRA_TOKEN` — PAT with read access to `AlejandroMarques/perro-paco-infra`
+- `INFRA_TOKEN` — PAT with read access to `alejandromarques/perro-paco-infra`
 - `DEPLOY_HOST` — Hetzner server IP
 - `DEPLOY_USER` — `deploy`
 - `DEPLOY_SSH_KEY` — Private key from `keys/deploy_perropaco`

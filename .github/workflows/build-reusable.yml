@@ -12,7 +12,7 @@ on:
         required: true
         type: string
       image_name:
-        description: "GHCR image name (e.g. AlejandroMarques/perro-paco-api)"
+        description: "GHCR image name (e.g. alejandromarques/perro-paco-api)"
         required: true
         type: string
       build_context:
