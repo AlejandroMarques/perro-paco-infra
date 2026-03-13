@@ -1,0 +1,14 @@
+# Private keys - never commit
+keys/deploy_perropaco
+keys/*.pem
+*.pem
+!keys/.gitkeep
+
+# Local env
+.env
+.env.*
+!.env.example
+
+# OS
+.DS_Store
+Thumbs.db

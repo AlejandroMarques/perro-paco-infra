@@ -1,0 +1,14 @@
+node_modules
+.git
+.github
+.env
+.env.*
+!.env.example
+*.md
+dist
+.vscode
+*.log
+coverage
+__tests__
+*.test.ts
+*.spec.ts

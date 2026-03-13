@@ -1,0 +1,189 @@
+name: Reusable Deploy
+
+on:
+  workflow_call:
+    inputs:
+      service:
+        description: "Service to deploy (api or admin)"
+        required: true
+        type: string
+      project:
+        description: "Project name (perropaco-dev or perropaco-prd)"
+        required: true
+        type: string
+      image_name:
+        description: "GHCR image name (e.g. AlejandroMarques/perro-paco-api)"
+        required: true
+        type: string
+      image_tag:
+        description: "Image tag to deploy"
+        required: true
+        type: string
+      infra_repo:
+        description: "Infra repo (owner/repo) to copy docker-compose from"
+        required: true
+        type: string
+      infra_ref:
+        description: "Branch or ref to checkout from infra repo"
+        required: false
+        type: string
+        default: "main"
+      environment:
+        description: "GitHub environment name for deployment tracking (e.g. dev)"
+        required: false
+        type: string
+        default: ""
+      environment_url:
+        description: "URL shown in GitHub deployment status"
+        required: false
+        type: string
+        default: ""
+    secrets:
+      INFRA_TOKEN:
+        description: "PAT with read access to the infra repo"
+        required: true
+      DEPLOY_HOST:
+        required: true
+      DEPLOY_USER:
+        required: true
+      DEPLOY_SSH_KEY:
+        required: true
+      DOPPLER_TOKEN:
+        description: "Doppler service token to regenerate .env on VPS"
+        required: false
+      GHCR_TOKEN:
+        description: "Token with read:packages scope to pull images from GHCR on the VPS"
+        required: false
+
+env:
+  REGISTRY: ghcr.io
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ inputs.environment || inputs.project }}
+      url: ${{ inputs.environment_url || '' }}
+    concurrency:
+      group: deploy-${{ inputs.project }}
+      cancel-in-progress: false
+
+    steps:
+      - name: Checkout infra repo
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ inputs.infra_repo }}
+          ref: ${{ inputs.infra_ref }}
+          path: _infra
+          token: ${{ secrets.INFRA_TOKEN }}
+
+      - name: Copy docker-compose to VPS
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+        run: |
+          mkdir -p ~/.ssh
+          echo "$DEPLOY_SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts 2>/dev/null || true
+          scp -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
+            _infra/projects/${{ inputs.project }}/docker-compose.prod.yml \
+            "$DEPLOY_USER@$DEPLOY_HOST:/opt/${{ inputs.project }}/"
+          rm -f ~/.ssh/deploy_key
+
+      - name: Deploy to server
+        uses: appleboy/ssh-action@v1
+        env:
+          DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN }}
+          GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          envs: DOPPLER_TOKEN,GHCR_TOKEN
+          script: |
+            set -eo pipefail
+
+            PROJECT="${{ inputs.project }}"
+            SERVICE="${{ inputs.service }}"
+            IMAGE="${{ env.REGISTRY }}/${{ inputs.image_name }}:${{ inputs.image_tag }}"
+
+            echo "--- Deploying ${SERVICE} (${IMAGE}) ---"
+
+            cd /opt/${PROJECT}
+
+            SVC_TAG_VAR="$(echo "${SERVICE}" | tr '[:lower:]-' '[:upper:]_')_IMAGE_TAG"
+
+            if [ -n "$DOPPLER_TOKEN" ]; then
+              echo "--- Refreshing secrets from Doppler ---"
+              doppler secrets download --token "$DOPPLER_TOKEN" --format env --no-file > .env.tmp
+              echo "IMAGE_TAG=${{ inputs.image_tag }}" >> .env.tmp
+              echo "${SVC_TAG_VAR}=${{ inputs.image_tag }}" >> .env.tmp
+              mv .env.tmp .env
+            else
+              echo "--- No DOPPLER_TOKEN, using existing .env ---"
+              if [ ! -f .env ]; then
+                echo "IMAGE_TAG=${{ inputs.image_tag }}" > .env
+              else
+                sed -i '/^IMAGE_TAG=/d' .env
+                echo "IMAGE_TAG=${{ inputs.image_tag }}" >> .env
+              fi
+              sed -i "/^${SVC_TAG_VAR}=/d" .env
+              echo "${SVC_TAG_VAR}=${{ inputs.image_tag }}" >> .env
+            fi
+
+            echo "--- .env keys ---"
+            grep -v '^#' .env | grep -v '^$' | cut -d= -f1 | while read key; do
+              echo "  ${key}"
+            done
+            echo "---"
+
+            if [ -n "$GHCR_TOKEN" ]; then
+              echo "$GHCR_TOKEN" | docker login ghcr.io -u x --password-stdin
+            fi
+
+            docker compose -f docker-compose.prod.yml pull ${SERVICE}
+            docker compose -f docker-compose.prod.yml up -d ${SERVICE}
+
+            CONTAINER="${PROJECT}-${SERVICE}"
+            TIMEOUT=60
+            echo "--- Verifying health (${CONTAINER}) ---"
+            STATUS=$(docker inspect --format='{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' "$CONTAINER" 2>/dev/null || echo "none")
+            if [ "$STATUS" = "none" ]; then
+              echo "No healthcheck defined, skipping"
+            else
+              for i in $(seq 1 $TIMEOUT); do
+                STATUS=$(docker inspect --format='{{.State.Health.Status}}' "$CONTAINER" 2>/dev/null || echo "unknown")
+                case "$STATUS" in
+                  healthy)
+                    echo "Service healthy after ${i}s"
+                    break
+                    ;;
+                  unhealthy)
+                    echo "ERROR: Service unhealthy"
+                    docker logs "$CONTAINER" --tail 30
+                    exit 1
+                    ;;
+                esac
+                if [ "$i" = "$TIMEOUT" ]; then
+                  echo "ERROR: Health check timeout (${TIMEOUT}s)"
+                  docker logs "$CONTAINER" --tail 30
+                  exit 1
+                fi
+                sleep 1
+              done
+            fi
+
+            docker image prune -f --filter "until=168h"
+            echo "--- Deploy complete ---"
+
+      - name: Summary
+        run: |
+          echo "### Deploy complete :rocket:" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Property | Value |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|----------|-------|" >> "$GITHUB_STEP_SUMMARY"
+          echo "| **Project** | \`${{ inputs.project }}\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| **Service** | \`${{ inputs.service }}\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| **Image** | \`${{ inputs.image_name }}:${{ inputs.image_tag }}\` |" >> "$GITHUB_STEP_SUMMARY"
