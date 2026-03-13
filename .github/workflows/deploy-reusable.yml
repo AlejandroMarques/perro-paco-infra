@@ -117,6 +117,8 @@ jobs:
 
             if [ -n "$DOPPLER_TOKEN" ]; then
               echo "--- Refreshing secrets from Doppler ---"
+              # Ensure no local Doppler project/config from previous `doppler setup`
+              unset DOPPLER_ENV DOPPLER_CONFIG DOPPLER_PROJECT
               doppler secrets download --token "$DOPPLER_TOKEN" --format env --no-file > .env.tmp
               echo "IMAGE_TAG=${{ inputs.image_tag }}" >> .env.tmp
               echo "${SVC_TAG_VAR}=${{ inputs.image_tag }}" >> .env.tmp
