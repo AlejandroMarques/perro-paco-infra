@@ -28,7 +28,7 @@ perro-paco-infra/
 ## Quick start
 
 1. Create Hetzner CCX13 with `cloud-init/hetzner-init.yml` (see [SETUP_HETZNER.md](docs/SETUP_HETZNER.md)).
-2. Add DNS A records in Dinahosting for `api.perropaco.org`, `app.perropaco.org`, `api.dev.perropaco.org`, `app.dev.perropaco.org`.
+2. Add DNS A records in Dinahosting for `api.perropaco.org`, `admin.perropaco.org`, `api.dev.perropaco.org`, `admin.dev.perropaco.org`.
 3. Bootstrap Traefik, Doppler, and GHCR on the VPS.
 4. Configure GitHub Actions in `perro-paco-api` and `perro-paco-admin-app` to call the reusable workflows.
 
@@ -41,7 +41,7 @@ Push to main   → build-reusable (API + Admin) → deploy-reusable → /opt/per
 
 ## Domains
 
-| Env | API | Admin |
-|-----|-----|-------|
-| Dev | api.dev.perropaco.org | app.dev.perropaco.org |
-| Prod | api.perropaco.org | app.perropaco.org |
+| Env  | API                   | Admin                   |
+| ---- | --------------------- | ----------------------- |
+| Dev  | api.dev.perropaco.org | admin.dev.perropaco.org |
+| Prod | api.perropaco.org     | admin.perropaco.org     |

@@ -7,10 +7,10 @@
 
 ## Branch mapping
 
-| Branch    | Environment | Project       | Domains                                      |
-| --------- | ----------- | ------------- | -------------------------------------------- |
-| `staging` | dev         | perropaco-dev | api.dev.perropaco.org, app.dev.perropaco.org |
-| `main`    | prod        | perropaco-prd | api.perropaco.org, app.perropaco.org         |
+| Branch    | Environment | Project       | Domains                                        |
+| --------- | ----------- | ------------- | ---------------------------------------------- |
+| `staging` | dev         | perropaco-dev | api.dev.perropaco.org, admin.dev.perropaco.org |
+| `main`    | prod        | perropaco-prd | api.perropaco.org, admin.perropaco.org         |
 
 ## Image tagging
 
