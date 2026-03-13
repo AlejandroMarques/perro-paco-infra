@@ -18,7 +18,7 @@ services:
       retries: 10
 
   api:
-    image: ghcr.io/AlejandroMarques/perro-paco-api:${API_IMAGE_TAG:-latest}
+    image: ghcr.io/alejandromarques/perro-paco-api:${API_IMAGE_TAG:-latest}
     container_name: perropaco-prd-api
     restart: unless-stopped
     depends_on:
@@ -51,7 +51,7 @@ services:
       - "traefik.http.services.perropaco-prd-api.loadbalancer.server.port=4000"
 
   admin:
-    image: ghcr.io/AlejandroMarques/perro-paco-admin-app:${ADMIN_IMAGE_TAG:-latest}
+    image: ghcr.io/alejandromarques/perro-paco-admin-app:${ADMIN_IMAGE_TAG:-latest}
     container_name: perropaco-prd-admin
     restart: unless-stopped
     networks:
