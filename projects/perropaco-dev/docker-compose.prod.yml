@@ -7,8 +7,11 @@ services:
       POSTGRES_USER: ${DATABASE_USER}
       POSTGRES_PASSWORD: ${DATABASE_PASSWORD}
       POSTGRES_DB: ${DATABASE_NAME}
+      APP_DB_USER: ${APP_DB_USER:-perropaco_app}
+      APP_DB_PASSWORD: ${APP_DB_PASSWORD}
     volumes:
       - perropaco_dev_pgdata:/var/lib/postgresql/data
+      - ./db/init:/docker-entrypoint-initdb.d:ro
     networks:
       - internal
     healthcheck:
