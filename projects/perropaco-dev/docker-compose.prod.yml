@@ -55,6 +55,8 @@ services:
       - "traefik.http.routers.perropaco-dev-api.entrypoints=websecure"
       - "traefik.http.routers.perropaco-dev-api.tls.certresolver=letsencrypt"
       - "traefik.http.services.perropaco-dev-api.loadbalancer.server.port=4000"
+    volumes:
+      - /home/deploy/fcm_credentials/perro-paco-dev.json:/run/secrets/fcm-sa.json:ro
 
   admin:
     image: ghcr.io/alejandromarques/perro-paco-admin-app:${ADMIN_IMAGE_TAG:-latest}
