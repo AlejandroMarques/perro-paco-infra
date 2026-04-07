@@ -87,9 +87,16 @@ jobs:
           echo "$DEPLOY_SSH_KEY" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
           ssh-keyscan -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts 2>/dev/null || true
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
+            "$DEPLOY_USER@$DEPLOY_HOST" \
+            "mkdir -p /opt/${{ inputs.project }}/db/init"
           scp -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
             _infra/projects/${{ inputs.project }}/docker-compose.prod.yml \
             "$DEPLOY_USER@$DEPLOY_HOST:/opt/${{ inputs.project }}/"
+          # Upload Postgres init scripts (run only on fresh DB volume).
+          scp -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
+            _infra/projects/${{ inputs.project }}/db/init/* \
+            "$DEPLOY_USER@$DEPLOY_HOST:/opt/${{ inputs.project }}/db/init/"
           rm -f ~/.ssh/deploy_key
 
       - name: Deploy to server
@@ -112,6 +119,11 @@ jobs:
             echo "--- Deploying ${SERVICE} (${IMAGE}) ---"
 
             cd /opt/${PROJECT}
+
+            # Ensure init scripts are executable (Windows checkouts may lose +x).
+            if [ -d "./db/init" ]; then
+              chmod +x ./db/init/*.sh 2>/dev/null || true
+            fi
 
             SVC_TAG_VAR="$(echo "${SERVICE}" | tr '[:lower:]-' '[:upper:]_')_IMAGE_TAG"
 
