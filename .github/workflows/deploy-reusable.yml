@@ -87,16 +87,20 @@ jobs:
           echo "$DEPLOY_SSH_KEY" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
           ssh-keyscan -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts 2>/dev/null || true
+          # Note: /opt may be root-owned; upload to /tmp then move with sudo.
           ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
             "$DEPLOY_USER@$DEPLOY_HOST" \
-            "mkdir -p /opt/${{ inputs.project }}/db/init"
+            "rm -rf /tmp/${{ inputs.project }}-db-init && mkdir -p /tmp/${{ inputs.project }}-db-init"
           scp -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
             _infra/projects/${{ inputs.project }}/docker-compose.prod.yml \
             "$DEPLOY_USER@$DEPLOY_HOST:/opt/${{ inputs.project }}/"
           # Upload Postgres init scripts (run only on fresh DB volume).
           scp -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
             _infra/projects/${{ inputs.project }}/db/init/* \
-            "$DEPLOY_USER@$DEPLOY_HOST:/opt/${{ inputs.project }}/db/init/"
+            "$DEPLOY_USER@$DEPLOY_HOST:/tmp/${{ inputs.project }}-db-init/"
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
+            "$DEPLOY_USER@$DEPLOY_HOST" \
+            "sudo mkdir -p /opt/${{ inputs.project }}/db/init && sudo cp -f /tmp/${{ inputs.project }}-db-init/* /opt/${{ inputs.project }}/db/init/ && sudo chown -R ${DEPLOY_USER}:${DEPLOY_USER} /opt/${{ inputs.project }}/db && rm -rf /tmp/${{ inputs.project }}-db-init"
           rm -f ~/.ssh/deploy_key
 
       - name: Deploy to server
