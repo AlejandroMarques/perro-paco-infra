@@ -64,7 +64,7 @@ services:
       - traefik-public
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.perropaco-prd-admin.rule=Host(`app.perropaco.org`)"
+      - "traefik.http.routers.perropaco-prd-admin.rule=Host(`admin.perropaco.org`)"
       - "traefik.http.routers.perropaco-prd-admin.entrypoints=websecure"
       - "traefik.http.routers.perropaco-prd-admin.tls.certresolver=letsencrypt"
       - "traefik.http.services.perropaco-prd-admin.loadbalancer.server.port=80"
