@@ -19,6 +19,10 @@ services:
       interval: 5s
       timeout: 3s
       retries: 10
+    ports:
+      # Expose only on server loopback for SSH tunneling.
+      # Dev uses 127.0.0.1:5432, so prod must use a different host port.
+      - "127.0.0.1:5433:5432"
 
   api:
     image: ghcr.io/alejandromarques/perro-paco-api:${API_IMAGE_TAG:-latest}
